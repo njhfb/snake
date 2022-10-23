@@ -95,9 +95,7 @@ def try_eating_apple(snake, apple, hight, width):
         return apple
 
 
-# дано: y=9, x=10; x1=10, y1=10
-#
-# snake = None
+
 
 
 def main(stdscr):
