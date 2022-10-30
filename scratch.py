@@ -78,23 +78,37 @@ class Snake:
             return False
 
 
-def create_apple(snake, hight, width):
-    y = random.randint(0, hight)
+
+class Settings:
+    def __init__(self):
+        self.speed = 0.5
+        self.width = 20
+
+        self.height = 20
+
+
+
+def create_apple(snake, height, width):
+    y = random.randint(0, height)
     x = random.randint(0, width)
     for x1, y1 in snake.body:
         if x1 == x and y1 == y:
-            return create_apple(snake, hight, width)
+            return create_apple(snake, height, width)
     return (x, y)
 
 
-def try_eating_apple(snake, apple, hight, width):
+def try_eating_apple(snake, apple, height, width):
     if apple == snake.body[0]:
         snake.eat()
-        return create_apple(snake, hight, width)
+        return create_apple(snake, height, width)
     else:
         return apple
 
-
+def draw_walls(screen, settings):
+    screen.addstr(0, 0, '█' * settings.width)
+    screen.addstr(settings.height, 0, '█' * settings.width)
+    for y in range(1, settings.height):
+        screen.addstr(y, 0, '█' + ' ' * (settings.width - 2) + '█')
 
 
 
@@ -107,20 +121,23 @@ def main(stdscr):
     stdscr.nodelay(True)
     prev_time = time.time()
     last_key = -1
+    settings = Settings()
 
-    apple = create_apple(snake, 20, 20)
+    apple = create_apple(snake, settings.height, settings.width)
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
     while True:
         curr_time = time.time()
-        if curr_time - prev_time >= 0.1:
+        if curr_time - prev_time >= settings.speed:
             snake.move()
             snake.death_of_snake()
             if snake.is_snake_dead():
                 break
-            apple = try_eating_apple(snake, apple, 20, 20)
+            apple = try_eating_apple(snake, apple, settings.height, settings.width)
             prev_time = curr_time
+        # отрисовка
         stdscr.clear()
+        draw_walls(stdscr, settings)
         stdscr.addstr(snake.body[0][1], snake.body[0][0], '0')
         for cell in snake.body[1:-1]:
             stdscr.addstr(cell[1], cell[0], 'o')
@@ -162,7 +179,8 @@ def main(stdscr):
     #     stdscr.refresh()
     #     sleep(0.5)
     stdscr.clear()
-    stdscr.addstr(10 , 8, 'GAME OVER', curses.color_pair(1))
+    gameover = 'GAME OVER'
+    stdscr.addstr(settings.height // 2, settings.width // 2 - len(gameover) // 2, gameover, curses.color_pair(1))
     while True:
         if stdscr.getch() == 10:
             break
