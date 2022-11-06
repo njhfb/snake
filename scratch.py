@@ -6,6 +6,12 @@ from time import sleep
 import time
 
 
+class StateOfSnake(Enum):
+    ALIVE = 0
+    HIT_BY_WALL = 1
+    EATEN_BY_ITSELF = 2
+
+
 class Direction(Enum):
     UNKWOWN = 0
     UP = 1
@@ -21,6 +27,7 @@ class Snake:
         self.direction = Direction.UNKWOWN
         # (x, y) (0 - head) (2 - tail)
         self.body = [(10, 10), (9, 10), (8, 10)]
+        self.state = StateOfSnake.ALIVE
 
     def move(self):
         if self.direction == Direction.RIGHT:
@@ -63,53 +70,53 @@ class Snake:
                 return True
         return False
 
-    def death_of_snake(self):
+    def death_of_snake(self, settings):
         if self.is_snake_dead():
-            return
+            return self.state
         if self.body[0] in self.body[1:]:
-            self.body.clear()
+            self.state = StateOfSnake.EATEN_BY_ITSELF
+        if self.body[0][0] in (-1, settings.width) or self.body[0][1] in (-1, settings.height - 1):
+            self.state = StateOfSnake.HIT_BY_WALL
         else:
             pass
+        return self.state
 
     def is_snake_dead(self):
-        if not self.body:
-            return True
-        else:
-            return False
-
+        return not self.state == StateOfSnake.ALIVE
 
 
 class Settings:
     def __init__(self):
         self.speed = 0.5
         self.width = 20
-
         self.height = 20
+        self.apple_count = 1
 
 
-
-def create_apple(snake, height, width):
+def create_apple(snake, height, width, apples):
     y = random.randint(0, height)
     x = random.randint(0, width)
-    for x1, y1 in snake.body:
-        if x1 == x and y1 == y:
-            return create_apple(snake, height, width)
+    if (x, y) in snake.body or (x, y) in apples:
+        return create_apple(snake, height, width, apples)
     return (x, y)
 
 
-def try_eating_apple(snake, apple, height, width):
-    if apple == snake.body[0]:
-        snake.eat()
-        return create_apple(snake, height, width)
-    else:
-        return apple
+def try_eating_apple(snake, apples, height, width):
+    new_apples = []
+    for apple in apples:
+        if apple == snake.body[0]:
+            snake.eat()
+            new_apples.append(create_apple(snake, height, width, apples))
+        else:
+            new_apples.append(apple)
+    return new_apples
+
 
 def draw_walls(screen, settings):
-    screen.addstr(0, 0, '█' * settings.width)
-    screen.addstr(settings.height, 0, '█' * settings.width)
+    screen.addstr(0, 0, '█' * (settings.width + 2))
+    screen.addstr(settings.height, 0, '█' * (settings.width + 2))
     for y in range(1, settings.height):
-        screen.addstr(y, 0, '█' + ' ' * (settings.width - 2) + '█')
-
+        screen.addstr(y, 0, '█' + ' ' * settings.width + '█')
 
 
 def main(stdscr):
@@ -122,28 +129,33 @@ def main(stdscr):
     prev_time = time.time()
     last_key = -1
     settings = Settings()
+    settings.width = 40
+    settings.speed = 0.25
+    settings.apple_count = 3
 
-    apple = create_apple(snake, settings.height, settings.width)
+    apples = [create_apple(snake, settings.height - 2, settings.width - 2, []) for _ in range(0, settings.apple_count)]
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    shifts = (1, 1)
     while True:
         curr_time = time.time()
         if curr_time - prev_time >= settings.speed:
             snake.move()
-            snake.death_of_snake()
+            snake.death_of_snake(settings)
             if snake.is_snake_dead():
                 break
-            apple = try_eating_apple(snake, apple, settings.height, settings.width)
+            apples = try_eating_apple(snake, apples, settings.height - 2, settings.width - 2)
             prev_time = curr_time
         # отрисовка
         stdscr.clear()
         draw_walls(stdscr, settings)
-        stdscr.addstr(snake.body[0][1], snake.body[0][0], '0')
+        stdscr.addstr(snake.body[0][1] + shifts[0], snake.body[0][0] + shifts[1], '0')
         for cell in snake.body[1:-1]:
-            stdscr.addstr(cell[1], cell[0], 'o')
-        stdscr.addstr(snake.body[-1][1], snake.body[-1][0], '.')
+            stdscr.addstr(cell[1] + shifts[0], cell[0] + shifts[1], 'o')
+        stdscr.addstr(snake.body[-1][1] + shifts[0], snake.body[-1][0] + shifts[1], '.')
 
-        stdscr.addstr(apple[1], apple[0], 'Q', curses.color_pair(2))
+        for apple in apples:
+            stdscr.addstr(apple[1] + shifts[0], apple[0] + shifts[1], 'Q', curses.color_pair(2))
 
         key = stdscr.getch()
         if key != -1:
@@ -180,6 +192,10 @@ def main(stdscr):
     #     sleep(0.5)
     stdscr.clear()
     gameover = 'GAME OVER'
+    if snake.state == StateOfSnake.HIT_BY_WALL:
+        gameover = 'GAME OVER BY WALLS'
+    elif snake.state == StateOfSnake.EATEN_BY_ITSELF:
+        gameover = 'YOU SHOULD EAT YOURSELF NOW'
     stdscr.addstr(settings.height // 2, settings.width // 2 - len(gameover) // 2, gameover, curses.color_pair(1))
     while True:
         if stdscr.getch() == 10:
@@ -214,4 +230,3 @@ if __name__ == '__main__':
     # wrapper
 
     wrapper(main)
-
