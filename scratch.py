@@ -11,6 +11,9 @@ class StateOfSnake(Enum):
     HIT_BY_WALL = 1
     EATEN_BY_ITSELF = 2
 
+class MenuActions(Enum):
+    PLAY = 0
+    EXIT = 1
 
 class Direction(Enum):
     UNKWOWN = 0
@@ -20,8 +23,6 @@ class Direction(Enum):
     LEFT = 4
 
 
-# .ooooo0
-# нарисовать окно
 class Snake:
     def __init__(self):
         self.direction = Direction.UNKWOWN
@@ -112,6 +113,11 @@ def try_eating_apple(snake, apples, height, width):
     return new_apples
 
 
+def apple_score(snake):
+    score = (len(snake.body)-3) * 10
+    return score
+
+
 def draw_walls(screen, settings):
     screen.addstr(0, 0, '█' * (settings.width + 2))
     screen.addstr(settings.height, 0, '█' * (settings.width + 2))
@@ -120,19 +126,54 @@ def draw_walls(screen, settings):
 
 
 def main(stdscr):
-    global snake
     curses.curs_set(False)
     curses.cbreak()
     stdscr.keypad(True)
     curses.noecho()
     stdscr.nodelay(True)
-    prev_time = time.time()
-    last_key = -1
     settings = Settings()
     settings.width = 40
     settings.speed = 0.25
     settings.apple_count = 3
+    while True:
+        action = menu(stdscr, settings)
+        if action == MenuActions.PLAY:
+            play(stdscr, settings)
+        else:
+            break
 
+def menu(stdscr, settings):
+    last_key = -1
+    selection = MenuActions.PLAY
+    while True:
+
+        key = stdscr.getch()
+        if key != -1:
+            last_key = key
+
+        if last_key == 10:
+            return selection
+        elif last_key == 456:
+            selection = MenuActions.EXIT
+
+        elif last_key == 450:
+            selection = MenuActions.PLAY
+
+        stdscr.clear()
+        stdscr.addstr(10, 10, 'Play')
+        stdscr.addstr(12, 10, 'Exit')
+        if selection == MenuActions.PLAY:
+            stdscr.addstr(10, 9, '>')
+        elif selection == MenuActions.EXIT:
+            stdscr.addstr(12, 9, '>')
+        stdscr.refresh()
+
+
+def play(stdscr, settings):
+    snake = Snake()
+    snake.set_direction(Direction.DOWN)
+    prev_time = time.time()
+    last_key = -1
     apples = [create_apple(snake, settings.height - 2, settings.width - 2, []) for _ in range(0, settings.apple_count)]
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -157,11 +198,13 @@ def main(stdscr):
         for apple in apples:
             stdscr.addstr(apple[1] + shifts[0], apple[0] + shifts[1], 'Q', curses.color_pair(2))
 
+        score = apple_score(snake)
+        stdscr.addstr(settings.height // 2, settings.width + 10, f'YOUR SCORE:{str(score)}')
+
         key = stdscr.getch()
         if key != -1:
             last_key = key
 
-        # stdscr.addstr(0, 0, f'{last_key}')
         if last_key == 10:
             break
         elif last_key == 454:
@@ -175,58 +218,22 @@ def main(stdscr):
 
         stdscr.refresh()
 
-    # stdscr.addstr(0, 0, 'A')
-    # x = 0
-    # x2 = 0
-    # count = 0
-    # curses.curs_set(False)
-    # while True:
-    #     count = count + 1
-    #     if count % 2 == 0:
-    #         x = x + 1
-    #     stdscr.clear()
-    #     stdscr.addstr(0, x, 'A')
-    #     x2 = x2 + 1
-    #     stdscr.addstr(1, x2, 'B')
-    #     stdscr.refresh()
-    #     sleep(0.5)
     stdscr.clear()
+    final_score = f'Your final score:{str(score)}'
     gameover = 'GAME OVER'
     if snake.state == StateOfSnake.HIT_BY_WALL:
         gameover = 'GAME OVER BY WALLS'
     elif snake.state == StateOfSnake.EATEN_BY_ITSELF:
         gameover = 'YOU SHOULD EAT YOURSELF NOW'
     stdscr.addstr(settings.height // 2, settings.width // 2 - len(gameover) // 2, gameover, curses.color_pair(1))
+    stdscr.addstr(settings.height // 2 + 2, settings.width // 2 - len(final_score) // 2, final_score, curses.color_pair(1))
+
     while True:
         if stdscr.getch() == 10:
             break
 
 
 if __name__ == '__main__':
-    global snake
-    snake = Snake()
-    snake.set_direction(Direction.DOWN)
-    # apple = create_apple(snake, 20, 20)
-    # for y in range(0 , 20):
-    #     for x in range(0, 20):
-    #         if x == apple[0] and y == apple[1]:
-    #             print('Q', end = '')
-    #         elif snake.is_head(x, y):
-    #             print('0', end = '')
-    #         elif snake.is_tail(x, y):
-    #             print('.', end = '')
-    #         elif snake.is_body(x, y):
-    #             print('o', end = '')
-    #         else:
-    #             print(' ', end = '')
-    #     print()
-    # stdscr = curses.initscr()
-    # begin_x = 0
-    # begin_y = 0
-    # weight_field = 20
-    # height_field = 20
-    # win = curses.newwin(weight_field, height_field, begin_y, begin_x)
-    # win.getkey()
-    # wrapper
+
 
     wrapper(main)
