@@ -14,6 +14,10 @@ class StateOfSnake(Enum):
 class MenuActions(Enum):
     PLAY = 0
     EXIT = 1
+    EASY = 2
+    MEDIUM = 3
+    HARD = 4
+    BACK = 5
 
 class Direction(Enum):
     UNKWOWN = 0
@@ -137,7 +141,11 @@ def main(stdscr):
     settings.apple_count = 3
     while True:
         action = menu(stdscr, settings)
-        if action == MenuActions.PLAY:
+        if action == MenuActions.EASY:
+            play(stdscr, settings)
+        elif action == MenuActions.MEDIUM:
+            play(stdscr, settings)
+        elif action == MenuActions.HARD:
             play(stdscr, settings)
         else:
             break
@@ -148,11 +156,17 @@ def menu(stdscr, settings):
     while True:
 
         key = stdscr.getch()
-        if key != -1:
-            last_key = key
+        last_key = key
 
         if last_key == 10:
-            return selection
+            if selection == MenuActions.PLAY:
+                action = submenu(stdscr, settings)
+                if action == MenuActions.BACK:
+                    continue
+                else:
+                    return action
+            elif selection == MenuActions.EXIT:
+                return selection
         elif last_key == 456:
             selection = MenuActions.EXIT
 
@@ -167,6 +181,40 @@ def menu(stdscr, settings):
         elif selection == MenuActions.EXIT:
             stdscr.addstr(12, 9, '>')
         stdscr.refresh()
+
+def submenu(stdscr, settings):
+    last_key = -1
+    index = 0
+    actions = [MenuActions.EASY, MenuActions.MEDIUM, MenuActions.HARD, MenuActions.BACK]
+    while True:
+
+        key = stdscr.getch()
+        last_key = key
+
+        if last_key == 10:
+            return actions[index]
+        elif last_key == 456:
+            index += 1
+
+        elif last_key == 450:
+            index += len(actions) - 1
+
+        index %= len(actions)
+        stdscr.clear()
+        stdscr.addstr(10, 10, 'Easy')
+        stdscr.addstr(12, 10, 'Medium')
+        stdscr.addstr(14, 10, 'Hard')
+        stdscr.addstr(16, 10, 'Back')
+        if actions[index] == MenuActions.EASY:
+            stdscr.addstr(10, 9, '>')
+        elif actions[index] == MenuActions.MEDIUM:
+            stdscr.addstr(12, 9, '>')
+        elif actions[index] == MenuActions.HARD:
+            stdscr.addstr(14, 9, '>')
+        elif actions[index] == MenuActions.BACK:
+            stdscr.addstr(16, 9, '>')
+        stdscr.refresh()
+
 
 
 def play(stdscr, settings):
