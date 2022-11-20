@@ -1,3 +1,4 @@
+import sys
 from enum import Enum
 import random
 import curses
@@ -18,6 +19,8 @@ class MenuActions(Enum):
     MEDIUM = 3
     HARD = 4
     BACK = 5
+    CONTINUE = 6
+    SAVE_N_EXIT = 7
 
 class Direction(Enum):
     UNKWOWN = 0
@@ -28,10 +31,10 @@ class Direction(Enum):
 
 
 class Snake:
-    def __init__(self):
+    def __init__(self, y, x):
         self.direction = Direction.UNKWOWN
         # (x, y) (0 - head) (2 - tail)
-        self.body = [(10, 10), (9, 10), (8, 10)]
+        self.body = [(x, y), (x - 1, y), (x - 2, y)]
         self.state = StateOfSnake.ALIVE
 
     def move(self):
@@ -136,50 +139,69 @@ def main(stdscr):
     curses.noecho()
     stdscr.nodelay(True)
     settings = Settings()
-    settings.width = 40
-    settings.speed = 0.25
-    settings.apple_count = 3
     while True:
         action = menu(stdscr, settings)
         if action == MenuActions.EASY:
+            settings.height = 30
+            settings.width = 50
+            settings.speed = 0.4
+            settings.apple_count = 3
             play(stdscr, settings)
         elif action == MenuActions.MEDIUM:
+            settings.height = 20
+            settings.width = 40
+            settings.speed = 0.25
+            settings.apple_count = 2
             play(stdscr, settings)
         elif action == MenuActions.HARD:
+            settings.height = 10
+            settings.width = 30
+            settings.speed = 0.15
+            settings.apple_count = 1
             play(stdscr, settings)
-        else:
+        elif action == MenuActions.EXIT:
             break
+        elif action == MenuActions.CONTINUE:
+            pass
+
+
 
 def menu(stdscr, settings):
     last_key = -1
-    selection = MenuActions.PLAY
+    index = 0
+    actions = [MenuActions.PLAY, MenuActions.EXIT, MenuActions.CONTINUE]
     while True:
 
         key = stdscr.getch()
         last_key = key
 
         if last_key == 10:
-            if selection == MenuActions.PLAY:
+            if actions[index] == MenuActions.PLAY:
                 action = submenu(stdscr, settings)
                 if action == MenuActions.BACK:
                     continue
                 else:
                     return action
-            elif selection == MenuActions.EXIT:
-                return selection
+            else:
+                return actions[index]
         elif last_key == 456:
-            selection = MenuActions.EXIT
+            index += 1
 
         elif last_key == 450:
-            selection = MenuActions.PLAY
+            index += len(actions) - 1
 
+        index %= len(actions)
         stdscr.clear()
         stdscr.addstr(10, 10, 'Play')
         stdscr.addstr(12, 10, 'Exit')
-        if selection == MenuActions.PLAY:
+        stdscr.addstr(14, 10, 'Continue')
+        if actions[index] == MenuActions.PLAY:
             stdscr.addstr(10, 9, '>')
-        elif selection == MenuActions.EXIT:
+        elif actions[index] == MenuActions.EXIT:
             stdscr.addstr(12, 9, '>')
+        elif actions[index] == MenuActions.CONTINUE:
+            stdscr.addstr(14, 9, '>')
+
         stdscr.refresh()
 
 def submenu(stdscr, settings):
@@ -215,10 +237,39 @@ def submenu(stdscr, settings):
             stdscr.addstr(16, 9, '>')
         stdscr.refresh()
 
+def pause_menu(stdscr, settings):
+    index = 0
+    actions = [MenuActions.CONTINUE, MenuActions.SAVE_N_EXIT]
+    while True:
+
+        key = stdscr.getch()
+
+        if key == 10:
+            return actions[index]
+        elif key == 456:
+            index += 1
+
+        elif key == 450:
+            index += len(actions) - 1
+
+        index %= len(actions)
+        stdscr.clear()
+        stdscr.addstr(10, 10, 'Continue')
+        stdscr.addstr(12, 10, 'Save & Exit')
+
+        if actions[index] == MenuActions.CONTINUE:
+            stdscr.addstr(10, 9, '>')
+        elif actions[index] == MenuActions.SAVE_N_EXIT:
+            stdscr.addstr(12, 9, '>')
+        stdscr.refresh()
+
+
+def savenexit():
+    sys.exit(0)
 
 
 def play(stdscr, settings):
-    snake = Snake()
+    snake = Snake(settings.height // 2, settings.width // 2)
     snake.set_direction(Direction.DOWN)
     prev_time = time.time()
     last_key = -1
@@ -254,7 +305,10 @@ def play(stdscr, settings):
             last_key = key
 
         if last_key == 10:
-            break
+            action = pause_menu(stdscr, settings)
+            if action == MenuActions.SAVE_N_EXIT:
+                savenexit()
+            last_key = -1
         elif last_key == 454:
             snake.set_direction(Direction.RIGHT)
         elif last_key == 456:
