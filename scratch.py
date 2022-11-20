@@ -12,6 +12,7 @@ class StateOfSnake(Enum):
     HIT_BY_WALL = 1
     EATEN_BY_ITSELF = 2
 
+
 class MenuActions(Enum):
     PLAY = 0
     EXIT = 1
@@ -22,12 +23,20 @@ class MenuActions(Enum):
     CONTINUE = 6
     SAVE_N_EXIT = 7
 
+
 class Direction(Enum):
     UNKWOWN = 0
     UP = 1
     DOWN = 2
     RIGHT = 3
     LEFT = 4
+
+
+class Game:
+    def __init__(self, settings, snake, apples):
+        self.settings = settings
+        self.snake = snake
+        self.apples = apples
 
 
 class Snake:
@@ -121,7 +130,7 @@ def try_eating_apple(snake, apples, height, width):
 
 
 def apple_score(snake):
-    score = (len(snake.body)-3) * 10
+    score = (len(snake.body) - 3) * 10
     return score
 
 
@@ -146,24 +155,23 @@ def main(stdscr):
             settings.width = 50
             settings.speed = 0.4
             settings.apple_count = 3
-            play(stdscr, settings)
+            play(stdscr, create_new_game(settings))
         elif action == MenuActions.MEDIUM:
             settings.height = 20
             settings.width = 40
             settings.speed = 0.25
             settings.apple_count = 2
-            play(stdscr, settings)
+            play(stdscr, create_new_game(settings))
         elif action == MenuActions.HARD:
             settings.height = 10
             settings.width = 30
             settings.speed = 0.15
             settings.apple_count = 1
-            play(stdscr, settings)
+            play(stdscr, create_new_game(settings))
         elif action == MenuActions.EXIT:
             break
         elif action == MenuActions.CONTINUE:
             pass
-
 
 
 def menu(stdscr, settings):
@@ -204,6 +212,7 @@ def menu(stdscr, settings):
 
         stdscr.refresh()
 
+
 def submenu(stdscr, settings):
     last_key = -1
     index = 0
@@ -237,6 +246,7 @@ def submenu(stdscr, settings):
             stdscr.addstr(16, 9, '>')
         stdscr.refresh()
 
+
 def pause_menu(stdscr, settings):
     index = 0
     actions = [MenuActions.CONTINUE, MenuActions.SAVE_N_EXIT]
@@ -268,67 +278,73 @@ def savenexit():
     sys.exit(0)
 
 
-def play(stdscr, settings):
+def create_new_game(settings):
     snake = Snake(settings.height // 2, settings.width // 2)
     snake.set_direction(Direction.DOWN)
+    apples = [create_apple(snake, settings.height - 2, settings.width - 2, []) for _ in range(0, settings.apple_count)]
+    return Game(settings, snake, apples)
+
+
+def play(stdscr, game):
     prev_time = time.time()
     last_key = -1
-    apples = [create_apple(snake, settings.height - 2, settings.width - 2, []) for _ in range(0, settings.apple_count)]
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
     shifts = (1, 1)
     while True:
         curr_time = time.time()
-        if curr_time - prev_time >= settings.speed:
-            snake.move()
-            snake.death_of_snake(settings)
-            if snake.is_snake_dead():
+        if curr_time - prev_time >= game.settings.speed:
+            game.snake.move()
+            game.snake.death_of_snake(game.settings)
+            if game.snake.is_snake_dead():
                 break
-            apples = try_eating_apple(snake, apples, settings.height - 2, settings.width - 2)
+            game.apples = try_eating_apple(game.snake, game.apples, game.settings.height - 2, game.settings.width - 2)
             prev_time = curr_time
         # отрисовка
         stdscr.clear()
-        draw_walls(stdscr, settings)
-        stdscr.addstr(snake.body[0][1] + shifts[0], snake.body[0][0] + shifts[1], '0')
-        for cell in snake.body[1:-1]:
+        draw_walls(stdscr, game.settings)
+        stdscr.addstr(game.snake.body[0][1] + shifts[0], game.snake.body[0][0] + shifts[1], '0')
+        for cell in game.snake.body[1:-1]:
             stdscr.addstr(cell[1] + shifts[0], cell[0] + shifts[1], 'o')
-        stdscr.addstr(snake.body[-1][1] + shifts[0], snake.body[-1][0] + shifts[1], '.')
+        stdscr.addstr(game.snake.body[-1][1] + shifts[0], game.snake.body[-1][0] + shifts[1], '.')
 
-        for apple in apples:
+        for apple in game.apples:
             stdscr.addstr(apple[1] + shifts[0], apple[0] + shifts[1], 'Q', curses.color_pair(2))
 
-        score = apple_score(snake)
-        stdscr.addstr(settings.height // 2, settings.width + 10, f'YOUR SCORE:{str(score)}')
+        score = apple_score(game.snake)
+        stdscr.addstr(game.settings.height // 2, game.settings.width + 10, f'YOUR SCORE:{str(score)}')
 
         key = stdscr.getch()
         if key != -1:
             last_key = key
 
         if last_key == 10:
-            action = pause_menu(stdscr, settings)
+            action = pause_menu(stdscr, game.settings)
             if action == MenuActions.SAVE_N_EXIT:
                 savenexit()
             last_key = -1
         elif last_key == 454:
-            snake.set_direction(Direction.RIGHT)
+            game.snake.set_direction(Direction.RIGHT)
         elif last_key == 456:
-            snake.set_direction(Direction.DOWN)
+            game.snake.set_direction(Direction.DOWN)
         elif last_key == 452:
-            snake.set_direction(Direction.LEFT)
+            game.snake.set_direction(Direction.LEFT)
         elif last_key == 450:
-            snake.set_direction(Direction.UP)
+            game.snake.set_direction(Direction.UP)
 
         stdscr.refresh()
 
     stdscr.clear()
     final_score = f'Your final score:{str(score)}'
     gameover = 'GAME OVER'
-    if snake.state == StateOfSnake.HIT_BY_WALL:
+    if game.snake.state == StateOfSnake.HIT_BY_WALL:
         gameover = 'GAME OVER BY WALLS'
-    elif snake.state == StateOfSnake.EATEN_BY_ITSELF:
+    elif game.snake.state == StateOfSnake.EATEN_BY_ITSELF:
         gameover = 'YOU SHOULD EAT YOURSELF NOW'
-    stdscr.addstr(settings.height // 2, settings.width // 2 - len(gameover) // 2, gameover, curses.color_pair(1))
-    stdscr.addstr(settings.height // 2 + 2, settings.width // 2 - len(final_score) // 2, final_score, curses.color_pair(1))
+    stdscr.addstr(game.settings.height // 2, game.settings.width // 2 - len(gameover) // 2, gameover,
+                  curses.color_pair(1))
+    stdscr.addstr(game.settings.height // 2 + 2, game.settings.width // 2 - len(final_score) // 2, final_score,
+                  curses.color_pair(1))
 
     while True:
         if stdscr.getch() == 10:
@@ -336,6 +352,4 @@ def play(stdscr, settings):
 
 
 if __name__ == '__main__':
-
-
     wrapper(main)
