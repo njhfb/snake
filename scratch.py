@@ -5,7 +5,8 @@ import curses
 from curses import wrapper
 from time import sleep
 import time
-
+import pickle
+import os
 
 class StateOfSnake(Enum):
     ALIVE = 0
@@ -141,6 +142,11 @@ def draw_walls(screen, settings):
         screen.addstr(y, 0, '█' + ' ' * settings.width + '█')
 
 
+def load_game():
+    with open('savefile', 'rb') as load_file:
+        return pickle.load(load_file)
+
+
 def main(stdscr):
     curses.curs_set(False)
     curses.cbreak()
@@ -171,13 +177,17 @@ def main(stdscr):
         elif action == MenuActions.EXIT:
             break
         elif action == MenuActions.CONTINUE:
-            pass
+            play(stdscr, load_game())
 
 
 def menu(stdscr, settings):
     last_key = -1
     index = 0
-    actions = [MenuActions.PLAY, MenuActions.EXIT, MenuActions.CONTINUE]
+    actions_names = ['Play', 'Exit']
+    actions = [MenuActions.PLAY, MenuActions.EXIT]
+    if os.path.isfile('savefile'):
+        actions += [MenuActions.CONTINUE]
+        actions_names +=['Continue']
     while True:
 
         key = stdscr.getch()
@@ -200,15 +210,11 @@ def menu(stdscr, settings):
 
         index %= len(actions)
         stdscr.clear()
-        stdscr.addstr(10, 10, 'Play')
-        stdscr.addstr(12, 10, 'Exit')
-        stdscr.addstr(14, 10, 'Continue')
-        if actions[index] == MenuActions.PLAY:
-            stdscr.addstr(10, 9, '>')
-        elif actions[index] == MenuActions.EXIT:
-            stdscr.addstr(12, 9, '>')
-        elif actions[index] == MenuActions.CONTINUE:
-            stdscr.addstr(14, 9, '>')
+        start_pos = 10
+        for name in actions_names:
+            stdscr.addstr(start_pos, 10, name)
+            start_pos += 2
+        stdscr.addstr(10 + 2 * index, 9, '>')
 
         stdscr.refresh()
 
@@ -274,7 +280,9 @@ def pause_menu(stdscr, settings):
         stdscr.refresh()
 
 
-def savenexit():
+def savenexit(game):
+    with open('savefile', 'wb') as save_file:
+        pickle.dump(game, save_file)
     sys.exit(0)
 
 
@@ -321,7 +329,7 @@ def play(stdscr, game):
         if last_key == 10:
             action = pause_menu(stdscr, game.settings)
             if action == MenuActions.SAVE_N_EXIT:
-                savenexit()
+                savenexit(game)
             last_key = -1
         elif last_key == 454:
             game.snake.set_direction(Direction.RIGHT)
